@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-jsd
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-jsd
+    spec:
+      containers:
+      - image: atlassian/jira-servicedesk:4.5
+        name: jsd
+        ports:
+        - containerPort: 8080
+        env:
+        - name: TZ
+          value: Australia/Sydney
+        - name: JIRA_HOME
+          value: /opt/atlassian-home

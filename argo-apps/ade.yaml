@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ade-jsd
+spec:
+  destination:
+    namespace: jira-service-desk
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    helm:
+      releaseName: ade
+      releaseNamespace: jira-service-desk
+    path: helm
