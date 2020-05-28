@@ -2,6 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: ade-jsd
+  namespace: argocd
 spec:
   destination:
     namespace: jira-service-desk
@@ -9,7 +10,7 @@ spec:
   project: default
   source:
     helm:
-      releaseName: ade
+      releaseName: ade-jsd
       releaseNamespace: jira-service-desk
     path: jira-service-desk
     repoURL: {{ .Values.spec.source.repoURL }}
