@@ -12,6 +12,11 @@ spec:
     helm:
       releaseName: ade-jsd
       releaseNamespace: jira-service-desk
+      parameters:
+      - name: hosts
+        value: 
+          - ade.agiledigital.support
+          - agiledigital.support
     path: jira-service-desk
     repoURL: {{ .Values.spec.source.repoURL }}
     targetRevision: {{ .Values.spec.source.targetRevision }}

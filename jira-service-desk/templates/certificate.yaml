@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: acme-crt
+spec:
+  secretName: {{ .Release.Name }}-cert-secret
+  dnsNames: {{ .Values.hosts }}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: Issuer
+    group: cert-manager.io

@@ -22,3 +22,10 @@ spec:
           value: Australia/Sydney
         - name: JIRA_HOME
           value: /opt/atlassian-home
+        volumeMounts:
+        - mountPath: "/opt/atlassian-home"
+          name: atlassian-home
+      volumes:
+        - name: atlassian-home
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-atlassian-home-pvc
