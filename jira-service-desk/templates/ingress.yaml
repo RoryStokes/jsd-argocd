@@ -14,11 +14,14 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: {{ .Release.Name }}-service
+          serviceName: {{ $.Release.Name }}-service
           servicePort: http
         path: /
     {{- end }}
   tls:
-  - hosts: {{ .Values.hosts }}
-    secretName: {{ .Release.Name }}-cert-secret
+  - hosts: 
+  {{- range .Values.hosts }}
+    - {{ . }}
+  {{- end }}
+    secretName: {{ .Release.Name }}-cert
 
