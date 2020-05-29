@@ -1,0 +1,16 @@
+{
+  "name": "jira-service-desks",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "scripts": {
+    "deploy": "serverless deploy "
+  },
+  "dependencies": {
+    "@cruglobal/serverless-merge-config": "^1.1.0",
+    "serverless": "1.67.0",
+    "serverless-plugin-git-variables": "^3.5.0",
+    "serverless-prune-plugin": "^1.4.2",
+    "serverless-pseudo-parameters": "^2.5.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,500 @@
+{
+  "service": {
+    "service": "jira-service-desk-infra",
+    "serviceObject": {
+      "name": "jira-service-desk-infra"
+    },
+    "provider": {
+      "stage": "live",
+      "variableSyntax": "\\${([^{}]+?)}",
+      "name": "aws",
+      "region": "ap-southeast-2",
+      "runtime": "nodejs12.x",
+      "tags": {
+        "SERVICE": "jira-service-desk-infra",
+        "GIT_BRANCH": "master",
+        "GIT_COMMIT": "dbf82dd",
+        "GIT_LAST_TAG": "dbf82dd",
+        "SERVERLESS_FRAMEWORK_STAGE": "live"
+      },
+      "stackTags": {
+        "SERVICE": "jira-service-desk-infra",
+        "GIT_BRANCH": "master",
+        "GIT_COMMIT": "dbf82dd",
+        "GIT_LAST_TAG": "dbf82dd",
+        "SERVERLESS_FRAMEWORK_STAGE": "live"
+      },
+      "environment": {
+        "SERVICE": "jira-service-desk-infra",
+        "STAGE": "live",
+        "REGION": "ap-southeast-2",
+        "GIT_BRANCH": "master",
+        "GIT_COMMIT": "dbf82dd",
+        "GIT_LAST_TAG": "dbf82dd",
+        "SERVERLESS_FRAMEWORK_STAGE": "live"
+      },
+      "versionFunctions": true,
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "RDSPassword": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+              "Description": "The database password",
+              "GenerateSecretString": {
+                "ExcludeLowercase": false,
+                "ExcludeNumbers": false,
+                "ExcludePunctuation": false,
+                "ExcludeUppercase": false,
+                "IncludeSpace": false,
+                "ExcludeCharacters": "\"@/\\",
+                "GenerateStringKey": "password",
+                "SecretStringTemplate": "{\"username\": \"master\"}"
+              },
+              "Name": "jira-service-desk-infra-credentials"
+            }
+          },
+          "RDSAccessSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+              "GroupDescription": "Security Group providing RDS access.",
+              "GroupName": "rds-access-sg",
+              "VpcId": {
+                "Fn::ImportValue": "core-infra-live-VPCId"
+              }
+            }
+          },
+          "RDSDatabaseSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+              "GroupDescription": "Security Group for Postgres RDS instance",
+              "GroupName": "rds-db-sg",
+              "VpcId": {
+                "Fn::ImportValue": "core-infra-live-VPCId"
+              }
+            }
+          },
+          "OutboundRule": {
+            "Type": "AWS::EC2::SecurityGroupEgress",
+            "Properties": {
+              "IpProtocol": "tcp",
+              "FromPort": 5432,
+              "ToPort": 5432,
+              "DestinationSecurityGroupId": {
+                "Fn::GetAtt": [
+                  "RDSDatabaseSecurityGroup",
+                  "GroupId"
+                ]
+              },
+              "GroupId": {
+                "Fn::GetAtt": [
+                  "RDSAccessSecurityGroup",
+                  "GroupId"
+                ]
+              }
+            }
+          },
+          "InboundRule": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+              "IpProtocol": "tcp",
+              "FromPort": 5432,
+              "ToPort": 5432,
+              "SourceSecurityGroupId": {
+                "Fn::GetAtt": [
+                  "RDSAccessSecurityGroup",
+                  "GroupId"
+                ]
+              },
+              "GroupId": {
+                "Fn::GetAtt": [
+                  "RDSDatabaseSecurityGroup",
+                  "GroupId"
+                ]
+              }
+            }
+          },
+          "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+              "DBSubnetGroupDescription": "db subnet so rds will use our VPC, rather than creating it's own",
+              "SubnetIds": [
+                {
+                  "Fn::ImportValue": "core-infra-live-Subnet01"
+                },
+                {
+                  "Fn::ImportValue": "core-infra-live-Subnet02"
+                },
+                {
+                  "Fn::ImportValue": "core-infra-live-Subnet03"
+                }
+              ]
+            }
+          },
+          "RDSCluster": {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+              "DBInstanceIdentifier": "rds",
+              "DeletionProtection": "false",
+              "MultiAZ": "false",
+              "Engine": "Postgres",
+              "MasterUsername": "{{resolve:secretsmanager:jira-service-desk-infra-credentials:SecretString:username}}",
+              "MasterUserPassword": "{{resolve:secretsmanager:jira-service-desk-infra-credentials:SecretString:password}}",
+              "DBInstanceClass": "db.t2.micro",
+              "AllocatedStorage": "10",
+              "StorageEncrypted": "false",
+              "VPCSecurityGroups": [
+                {
+                  "Fn::GetAtt": [
+                    "RDSDatabaseSecurityGroup",
+                    "GroupId"
+                  ]
+                }
+              ],
+              "DBSubnetGroupName": {
+                "Ref": "DBSubnetGroup"
+              }
+            },
+            "DeletionPolicy": "Delete",
+            "DependsOn": [
+              "RDSPassword",
+              "RDSDatabaseSecurityGroup"
+            ]
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          },
+          "DBAccessSG": {
+            "Value": {
+              "Fn::GetAtt": [
+                "RDSAccessSecurityGroup",
+                "GroupId"
+              ]
+            },
+            "Export": {
+              "Name": "jira-service-desk-infra-db-access"
+            }
+          },
+          "DBHost": {
+            "Value": {
+              "Fn::GetAtt": [
+                "RDSCluster",
+                "Endpoint.Address"
+              ]
+            },
+            "Export": {
+              "Name": "jira-service-desk-infra-db-host"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      }
+    },
+    "custom": {
+      "buildMetadata": {
+        "SERVICE": "jira-service-desk-infra",
+        "GIT_BRANCH": "master",
+        "GIT_COMMIT": "dbf82dd",
+        "GIT_LAST_TAG": "dbf82dd",
+        "SERVERLESS_FRAMEWORK_STAGE": "live"
+      },
+      "prune": {
+        "automatic": true,
+        "number": 10
+      }
+    },
+    "plugins": [
+      "@cruglobal/serverless-merge-config",
+      "serverless-plugin-git-variables",
+      "serverless-prune-plugin",
+      "serverless-pseudo-parameters"
+    ],
+    "pluginsData": {},
+    "functions": {},
+    "resources": {
+      "Resources": {
+        "RDSPassword": {
+          "Type": "AWS::SecretsManager::Secret",
+          "Properties": {
+            "Description": "The database password",
+            "GenerateSecretString": {
+              "ExcludeLowercase": false,
+              "ExcludeNumbers": false,
+              "ExcludePunctuation": false,
+              "ExcludeUppercase": false,
+              "IncludeSpace": false,
+              "ExcludeCharacters": "\"@/\\",
+              "GenerateStringKey": "password",
+              "SecretStringTemplate": "{\"username\": \"master\"}"
+            },
+            "Name": "jira-service-desk-infra-credentials"
+          }
+        },
+        "RDSAccessSecurityGroup": {
+          "Type": "AWS::EC2::SecurityGroup",
+          "Properties": {
+            "GroupDescription": "Security Group providing RDS access.",
+            "GroupName": "rds-access-sg",
+            "VpcId": {
+              "Fn::ImportValue": "core-infra-live-VPCId"
+            }
+          }
+        },
+        "RDSDatabaseSecurityGroup": {
+          "Type": "AWS::EC2::SecurityGroup",
+          "Properties": {
+            "GroupDescription": "Security Group for Postgres RDS instance",
+            "GroupName": "rds-db-sg",
+            "VpcId": {
+              "Fn::ImportValue": "core-infra-live-VPCId"
+            }
+          }
+        },
+        "OutboundRule": {
+          "Type": "AWS::EC2::SecurityGroupEgress",
+          "Properties": {
+            "IpProtocol": "tcp",
+            "FromPort": 5432,
+            "ToPort": 5432,
+            "DestinationSecurityGroupId": {
+              "Fn::GetAtt": [
+                "RDSDatabaseSecurityGroup",
+                "GroupId"
+              ]
+            },
+            "GroupId": {
+              "Fn::GetAtt": [
+                "RDSAccessSecurityGroup",
+                "GroupId"
+              ]
+            }
+          }
+        },
+        "InboundRule": {
+          "Type": "AWS::EC2::SecurityGroupIngress",
+          "Properties": {
+            "IpProtocol": "tcp",
+            "FromPort": 5432,
+            "ToPort": 5432,
+            "SourceSecurityGroupId": {
+              "Fn::GetAtt": [
+                "RDSAccessSecurityGroup",
+                "GroupId"
+              ]
+            },
+            "GroupId": {
+              "Fn::GetAtt": [
+                "RDSDatabaseSecurityGroup",
+                "GroupId"
+              ]
+            }
+          }
+        },
+        "DBSubnetGroup": {
+          "Type": "AWS::RDS::DBSubnetGroup",
+          "Properties": {
+            "DBSubnetGroupDescription": "db subnet so rds will use our VPC, rather than creating it's own",
+            "SubnetIds": [
+              {
+                "Fn::ImportValue": "core-infra-live-Subnet01"
+              },
+              {
+                "Fn::ImportValue": "core-infra-live-Subnet02"
+              },
+              {
+                "Fn::ImportValue": "core-infra-live-Subnet03"
+              }
+            ]
+          }
+        },
+        "RDSCluster": {
+          "Type": "AWS::RDS::DBInstance",
+          "Properties": {
+            "DBInstanceIdentifier": "rds",
+            "DeletionProtection": "false",
+            "MultiAZ": "false",
+            "Engine": "Postgres",
+            "MasterUsername": "{{resolve:secretsmanager:jira-service-desk-infra-credentials:SecretString:username}}",
+            "MasterUserPassword": "{{resolve:secretsmanager:jira-service-desk-infra-credentials:SecretString:password}}",
+            "DBInstanceClass": "db.t2.micro",
+            "AllocatedStorage": "10",
+            "StorageEncrypted": "false",
+            "VPCSecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "RDSDatabaseSecurityGroup",
+                  "GroupId"
+                ]
+              }
+            ],
+            "DBSubnetGroupName": {
+              "Ref": "DBSubnetGroup"
+            }
+          },
+          "DeletionPolicy": "Delete",
+          "DependsOn": [
+            "RDSPassword",
+            "RDSDatabaseSecurityGroup"
+          ]
+        }
+      },
+      "Outputs": {
+        "DBAccessSG": {
+          "Value": {
+            "Fn::GetAtt": [
+              "RDSAccessSecurityGroup",
+              "GroupId"
+            ]
+          },
+          "Export": {
+            "Name": "jira-service-desk-infra-db-access"
+          }
+        },
+        "DBHost": {
+          "Value": {
+            "Fn::GetAtt": [
+              "RDSCluster",
+              "Endpoint.Address"
+            ]
+          },
+          "Export": {
+            "Name": "jira-service-desk-infra-db-host"
+          }
+        }
+      }
+    },
+    "serviceFilename": "serverless.yml",
+    "layers": {},
+    "isDashboardMonitoringPreconfigured": false
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/jira-service-desk-infra/live/1590731321013-2020-05-29T05:48:41.013Z",
+    "artifact": ""
+  }
+}
