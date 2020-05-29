@@ -14,8 +14,7 @@ spec:
       releaseNamespace: jira-service-desk
       values: |
         hosts:
-          - ade.agiledigital.support
-          - agiledigital.support
+          - ade-jsd.core-systems.agiledigital.co
     path: jira-service-desk
     repoURL: {{ .Values.spec.source.repoURL }}
     targetRevision: {{ .Values.spec.source.targetRevision }}
